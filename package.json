@@ -1,7 +1,7 @@
 {
   "name": "glob-github",
   "version": "1.0.0",
-  "description": "Run glob expressions against the Github Repo Contents API and return the resulting filenames; with caching.",
+  "description": "Run glob expressions against the Github Repo Contents API and return the matching files and metadata; with caching.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

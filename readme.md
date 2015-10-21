@@ -1,6 +1,6 @@
 # glob-github
 
-Run glob expressions against the Github Repo Contents API and return the resulting filenames; with caching.
+Run glob expressions against the Github Repo Contents API and return the matching files and metadata; with caching.
 
 ## Features
 
