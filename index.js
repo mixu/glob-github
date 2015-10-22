@@ -3,8 +3,10 @@ var GitHubApi = require('github');
 var github = new GitHubApi({
   version: '3.0.0'
 });
+var Lifecycle = require('./lifecycle.js');
 
 var sharedCache = {};
+var lifecycle = new Lifecycle();
 
 function toCacheStr(opts) {
   return Object.keys(opts).sort().map(function(key) { return opts[key]; }).join('/');
@@ -72,6 +74,16 @@ module.exports = function(opts, onDone) {
           });
           return;
         }
+        if (lifecycle.isBlocking(cacheStr)) {
+          // the post-processing function has already done all the work for us,
+          // so just return from the readdir call.
+          lifecycle.onRelease(cacheStr, function() {
+            cacheHits++;
+            onDone(null, cache.readdir[cacheStr]);
+          });
+          return;
+        }
+        lifecycle.block(cacheStr);
 
         apiCalls++;
         github.repos.getContent(fetchOpts, function(err, files) {
@@ -80,6 +92,7 @@ module.exports = function(opts, onDone) {
             limit = Math.min(limit, parseInt(files.meta['x-ratelimit-remaining'], 10));
           }
           if (err) {
+            lifecycle.release(cacheStr);
             return onDone(err, []);
           }
 
@@ -99,6 +112,7 @@ module.exports = function(opts, onDone) {
             };
           });
           cache.readdir[cacheStr] = names;
+          lifecycle.release(cacheStr);
           return onDone(null, names);
         });
       },

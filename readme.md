@@ -7,6 +7,7 @@ Run glob expressions against the Github Repo Contents API and return the matchin
 - you can avoid performing a full git clone if you use [the Github Contents API](https://developer.github.com/v3/repos/contents/) to fetch files, but using it to traverse individual file paths is tedious; why not just run a glob expression against a specific Github repository and get the resulting API results?
 - you can use any glob expression like `**/*.md` to match files
 - supports in-memory caching so that the same file paths are never requested multiple times; you can easily write the cache to disk as a JSON file if you want long term caching as it is a simple hash
+- (since v1.1.0) deduplicates ongoing requests, so that even when executing multiple globs at the same time only one HTTP request is made for each resource
 
 ## Installation
 
@@ -81,3 +82,29 @@ glob(config, function(err, results, meta) {
   });
 });
 ```
+
+## Deduplication
+
+Concurrent calls are deduplicated: if a request for a specific Github endpoint (e.g. username + repo + path combination) is already pending, then any concurrent requests simply wait for that request to complete rather than making a new request.
+
+```
+var glob = require('glob-github');
+var config = { ... };
+
+glob(config, function(err, results, meta) {
+  console.log(err, results.length, meta);
+});
+
+glob(config, function(err, results, meta) {
+  console.log(err, results.length, meta);
+});
+```
+
+You should see something like:
+
+```
+null 16 { limit: 10, cacheHits: 10, apiCalls: 6 }
+null 16 { limit: 10, cacheHits: 6, apiCalls: 10 }
+```
+
+Note how the 16 API calls needed to resolve this `**/*.md` glob are divided between the two concurrent `glob()` calls so that only 16 requests are made and the duplicate requests are served from the cache.
