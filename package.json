@@ -1,6 +1,6 @@
 {
   "name": "glob-github",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Run glob expressions against the Github Repo Contents API and return the matching files and metadata; with caching.",
   "main": "index.js",
   "scripts": {
