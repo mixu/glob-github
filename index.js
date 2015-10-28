@@ -1,5 +1,6 @@
 var wildglob = require('wildglob');
 var parse = require('glob-parse');
+var xtend = require('xtend');
 var GitHubApi = require('github');
 var github = new GitHubApi({
   version: '3.0.0'
@@ -32,7 +33,7 @@ module.exports = function(opts, onDone) {
     cache.stat = {};
   }
   // ensure glob basepath exists
-  var basepath = parse.basename(opts.glob);
+  var basepath = parse.basename(opts.glob) || '/';
   if (!cache.stat[basepath]) {
     cache.stat[basepath] = {
       size: 0,
@@ -53,24 +54,30 @@ module.exports = function(opts, onDone) {
 
   var cacheHits = 0;
   var apiCalls = 0;
+  var baseOpts = {
+    user: opts.user,
+    repo: opts.repo,
+  };
+  if (opts.branch) {
+    baseOpts.ref = opts.branch;
+  }
 
   wildglob(opts.glob, {
     cwd: '/',
     fs: {
       stat: function(path, onDone) {
         process.nextTick(function() {
-          if (!cache.stat[path]) {
+          var slashPath = path.charAt(0) === '/' ? path : '/' + path;
+          if (!cache.stat[slashPath]) {
             throw new Error('Missing path: ' + path);
           }
-          return onDone(null, cache.stat[path]);
+          return onDone(null, cache.stat[slashPath]);
         });
       },
       readdir: function(path, onDone) {
-        var fetchOpts = {
-          user: opts.user,
-          repo: opts.repo,
+        var fetchOpts = xtend(baseOpts, {
           path: path.replace(/^\//, '').replace(/\/$/, '') || ''
-        };
+        });
         var cacheStr = toCacheStr(fetchOpts);
 
         if (cache.readdir[cacheStr]) {
@@ -106,8 +113,9 @@ module.exports = function(opts, onDone) {
           files.forEach(function(file) {
             names.push(file.name);
 
-            cache.http['/' + file.path] = file;
-            cache.stat['/' + file.path] = {
+            var slashPath = file.path.charAt(0) === '/' ? file.path : '/' + file.path;
+            cache.http[slashPath] = file;
+            cache.stat[slashPath] = {
               size: file.size,
               isFile: function() {
                 return file.type === 'file';
@@ -128,7 +136,7 @@ module.exports = function(opts, onDone) {
       var cacheEntries = [];
       if (results) {
         cacheEntries = results.map(function(path) {
-          return cache.http[path];
+          return cache.http[path.charAt(0) === '/' ? path : '/' + path];
         });
       }
       return onDone(err, cacheEntries, {

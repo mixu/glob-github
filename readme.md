@@ -43,6 +43,7 @@ glob({
 
 - `opts.user`: Github username
 - `opts.repo`: Github repo
+- `opts.branch`: Github branch (since `v1.2.0`); defaults to master
 - `opts.glob`: glob expression to match against
 - `opts.authenticate`: a hash passed to [`node-github`](https://github.com/mikedeboer/node-github#authentication)
 - `opts.cache`: (Optional). A hash that can be reused across calls, pass in a `{}` on the first usage and keep passing the same hash in every time to keep using the cache. Note that the results are automatically cached so you only need to pass this if you want to, say, write the cache to disk or something.
