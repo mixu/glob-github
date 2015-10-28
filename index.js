@@ -1,4 +1,5 @@
 var wildglob = require('wildglob');
+var parse = require('glob-parse');
 var GitHubApi = require('github');
 var github = new GitHubApi({
   version: '3.0.0'
@@ -30,8 +31,10 @@ module.exports = function(opts, onDone) {
     // path to stat cache
     cache.stat = {};
   }
-  if (!cache.stat['/']) {
-    cache.stat['/'] = {
+  // ensure glob basepath exists
+  var basepath = parse.basename(opts.glob);
+  if (!cache.stat[basepath]) {
+    cache.stat[basepath] = {
       size: 0,
       isFile: function() {
         return false;
@@ -56,6 +59,9 @@ module.exports = function(opts, onDone) {
     fs: {
       stat: function(path, onDone) {
         process.nextTick(function() {
+          if (!cache.stat[path]) {
+            throw new Error('Missing path: ' + path);
+          }
           return onDone(null, cache.stat[path]);
         });
       },
@@ -100,7 +106,7 @@ module.exports = function(opts, onDone) {
           files.forEach(function(file) {
             names.push(file.name);
 
-            cache.http[file.path] = file;
+            cache.http['/' + file.path] = file;
             cache.stat['/' + file.path] = {
               size: file.size,
               isFile: function() {
@@ -119,9 +125,13 @@ module.exports = function(opts, onDone) {
     },
   }, function(err, results) {
     if (onDone) {
-      return onDone(err, results.map(function(path) {
-        return cache.http[path];
-      }), {
+      var cacheEntries = [];
+      if (results) {
+        cacheEntries = results.map(function(path) {
+          return cache.http[path];
+        });
+      }
+      return onDone(err, cacheEntries, {
         limit: limit,
         cacheHits: cacheHits,
         apiCalls: apiCalls,
